@@ -54,6 +54,15 @@ Add this line:
 
 or add C<RT::Extension::Assets::AppleGSX> to your existing C<@Plugins> line.
 
+Config Apple GSX:
+
+    Set(
+        %AppleGSXOptions,
+        UserId           => 'foo@example.com',
+        Password         => 'secret',
+        ServiceAccountNo => 12345,
+    );
+
 =item Clear your mason cache
 
     rm -rf /opt/rt4/var/mason_data/obj
