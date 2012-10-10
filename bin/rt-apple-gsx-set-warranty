@@ -1,0 +1,133 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use lib '/opt/rt4/local/lib', '/opt/rt4/lib';
+
+use Getopt::Long;
+my %opt;
+GetOptions( \%opt, 'help|h', );
+if ( $opt{help} ) {
+    require Pod::Usage;
+    Pod::Usage::pod2usage({ verbose => 2 });
+    exit;
+}
+
+require RT;
+RT::LoadConfig();
+RT::Init();
+
+my $serial_cf = RT::CustomField->new(RT->SystemUser);
+$serial_cf->Load('Serial Number');
+unless ( $serial_cf->id ) {
+    die "Custom Field 'Serial Number' not found";
+}
+
+require RT::Attribute;
+my $attr = RT::Attribute->new( RT->SystemUser );
+$attr->LoadByNameAndObject( Name => 'AppleGSXTransactionId', Object => RT->System );
+unless ( $attr->id ) {
+    $attr->Create( Name => 'AppleGSXTransactionId', Object => RT->System );
+}
+
+my $last_txn_id = $attr->Content;
+
+my $txns = RT::Transactions->new(RT->SystemUser);
+$txns->Limit(
+    FIELD           => 'ObjectType',
+    VALUE           => 'RT::Asset',
+);
+
+$txns->Limit(
+    FIELD           => 'id',
+    VALUE           => $last_txn_id,
+    OPERATOR        => '>',
+) if $last_txn_id;
+
+$txns->Limit(
+    FIELD           => 'Type',
+    VALUE           => 'Create',
+    SUBCLAUSE       => 'Set',
+);
+
+$txns->Limit(
+    FIELD           => 'Type',
+    VALUE           => 'CustomField',
+    SUBCLAUSE       => 'Set',
+    ENTRYAGGREGATOR => 'OR',
+);
+
+$txns->Limit(
+    FIELD           => 'Field',
+    VALUE           => $serial_cf->id,
+    SUBCLAUSE       => 'Set',
+    ENTRYAGGREGATOR => 'AND',
+);
+
+my %assets;
+while ( my $txn = $txns->Next ) {
+    $assets{$txn->ObjectId} ||= $txn->Object;
+}
+
+my %FIELDS_MAP = (
+    'Warranty Status'     => 'warrantyStatus',
+    'Coverage Start Date' => 'coverageStartDate',
+    'Coverage End Date'   => 'coverageEndDate',
+);
+
+for my $asset ( values %assets ) {
+    my $trademark = $asset->FirstCustomFieldValue('Trademark');
+    next unless $trademark && $trademark eq 'Apple';
+    if ( my $serial = $asset->FirstCustomFieldValue('Serial Number') ) {
+        my $gsx  = RT::Extension::Assets::AppleGSX->Client;
+        my $info = $gsx->WarrantyStatus($serial);
+        if ( $info && $info->{warrantyDetailInfo} ) {
+            for my $field ( keys %FIELDS_MAP ) {
+                if ( defined $info->{warrantyDetailInfo}{ $FIELDS_MAP{$field} } ) {
+                    $asset->AddCustomFieldValue(
+                        Field => $field,
+                        Value =>
+                          $info->{warrantyDetailInfo}{ $FIELDS_MAP{$field} },
+                    );
+                }
+                else {
+                    my $old = $asset->FirstCustomFieldValue($field);
+                    if ( defined $old ) {
+                        $asset->DeleteCustomFieldValue(
+                            Field => $field,
+                            Value => $old,
+                        );
+                    }
+                }
+            }
+        }
+    }
+    else {
+        for my $field ( keys %FIELDS_MAP ) {
+            my $old = $asset->FirstCustomFieldValue($field);
+            if ( defined $old ) {
+                $asset->DeleteCustomFieldValue(
+                    Field => $field,
+                    Value => $old,
+                );
+            }
+        }
+    }
+}
+
+$attr->SetContent($txns->Last->id) if $txns->Last;
+
+__END__
+
+=head1 NAME
+
+rt-apple-gsx-set-warranty - set warranty info for apple assets
+
+=head1 SYNOPSIS
+
+    rt-apple-gsx-set-warranty
+
+=head1 DESCRIPTION
+
+This script will incrementally set warranty info for apple assets.
+cron job is recommended.

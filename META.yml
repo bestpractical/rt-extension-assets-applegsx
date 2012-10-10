@@ -16,6 +16,7 @@ meta-spec:
 name: RT-Extension-Assets-AppleGSX
 no_index:
   directory:
+    - etc
     - inc
 resources:
   license: http://opensource.org/licenses/gpl-license.php

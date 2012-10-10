@@ -4,6 +4,22 @@ package RT::Extension::Assets::AppleGSX;
 
 our $VERSION = '0.01';
 
+my $client;
+
+sub InitClient {
+    my $class = shift;
+    require RT::Extension::Assets::AppleGSX::Client;
+    $client =
+      RT::Extension::Assets::AppleGSX::Client->new(
+        RT->Config->Get('AppleGSXOptions'),
+      );
+}
+
+sub Client {
+    InitClient() unless $client;
+    return $client;
+}
+
 =head1 NAME
 
 RT-Extension-Assets-AppleGSX - Apple GSX for RT Assets
