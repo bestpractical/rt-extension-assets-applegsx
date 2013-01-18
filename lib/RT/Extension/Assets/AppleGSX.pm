@@ -38,13 +38,11 @@ May need root permissions
 
 =item make initdb
 
-Only run this the first time you install this module.
+Only run this the first time you install this module; this will create
+several custom fields for assets.  If you already have custom fields for
+serial numbers and warantee information, this step is unnecessary.
 
-If you run this twice, you may end up with duplicate data
-in your database.
-
-If you are upgrading this module, check for upgrading instructions
-in case changes need to be made to your database.
+Running C<make initdb> twice will cause duplicate custom fields.
 
 =item Edit your /opt/rt4/etc/RT_SiteConfig.pm
 
@@ -54,22 +52,39 @@ Add this line:
 
 or add C<RT::Extension::Assets::AppleGSX> to your existing C<@Plugins> line.
 
-Config Apple GSX:
+=item Add additional configuration options
 
-    Set(
-        %AppleGSXOptions,
+You must configure the authentication information used to connect to GSX:
+
+    Set( %AppleGSXOptions,
         UserId           => 'foo@example.com',
         Password         => 'secret',
         ServiceAccountNo => 12345,
     );
 
-=item Clear your mason cache
+Additionally, if you are not using the supplied custom fields, you may
+wish to Set one or more of the following (their defaults are shown):
 
-    rm -rf /opt/rt4/var/mason_data/obj
+    # Name of custom field containing serial number
+    Set( $AppleGSXSerialCF => "Serial Number" )
 
-=item Restart your webserver
+    # CFs to import from GSX, and their names there
+    Set( %AppleGSXMap,
+        'Warranty Status'     => 'warrantyStatus',
+        'Warranty Start Date' => 'coverageStartDate',
+        'Warranty End Date'   => 'coverageEndDate',
+    );
 
-=back
+    # Only attempt to import data from GSX for assets matching the
+    # following CF values:
+    Set( %AppleGSXChecks,
+        'Trademark' => qr/\bApple(Care)?\b/i,
+    );
+
+
+=item Run F</opt/rt4-assets/local/plugins/RT-Extension-Assets-AppleGSX/bin/rt-apple-gsx-set-warranty>
+
+You will likely wish to configure this script to run regularly, via a cron job.
 
 =head1 AUTHOR
 
@@ -84,7 +99,7 @@ or L<bug-RT-Extension-Assets-AppleGSX@rt.cpan.org>.
 
 =head1 LICENSE AND COPYRIGHT
 
-This software is Copyright (c) 2012 by Best Practical Solutions
+This software is Copyright (c) 2013 by Best Practical Solutions
 
 This is free software, licensed under:
 

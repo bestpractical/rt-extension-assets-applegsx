@@ -26,10 +26,24 @@ die "AppleGSXOptions not set; please read the documentation for " .
     "RT::Extension::Assets::AppleGSX for more on configuring this extension."
     unless RT->Config->Get('AppleGSXOptions');
 
-my $serial_cf = RT::CustomField->new(RT->SystemUser);
-$serial_cf->Load('Serial Number');
-unless ( $serial_cf->id ) {
-    die "Custom Field 'Serial Number' not found";
+
+my $serial_name = RT->Config->Get('AppleGSXSerialCF') || "Serial Number";
+
+my $FIELDS_MAP = RT->Config->Get('AppleGSXMap') || {
+    'Warranty Status'     => 'warrantyStatus',
+    'Warranty Start Date' => 'coverageStartDate',
+    'Warranty End Date'   => 'coverageEndDate',
+};
+
+my $CHECKS = RT->Config->Get('AppleGSXChecks') || {
+    'Trademark' => qr/\bApple(Care)?\b/i,
+};
+
+# Check that all of the CFs we reference exist
+for my $cfname ($serial_name, keys(%$FIELDS_MAP), keys(%$CHECKS)) {
+    my $cf = RT::CustomField->new(RT->SystemUser);
+    $cf->Load($cfname);
+    die "Custom Field '$cfname' not found" unless $cf->id;
 }
 
 
@@ -39,8 +53,11 @@ unless ( $attr->id ) {
     $attr->Create( Name => 'AppleGSXTransactionId', Object => RT->System );
 }
 
-my $last_txn_id = $attr->Content;
 
+my $serial_cf = RT::CustomField->new(RT->SystemUser);
+$serial_cf->Load($serial_name);
+
+my $last_txn_id = $attr->Content;
 my $txns = RT::Transactions->new(RT->SystemUser);
 $txns->Limit(
     FIELD           => 'ObjectType',
@@ -78,25 +95,22 @@ while ( my $txn = $txns->Next ) {
     $assets{$txn->ObjectId} ||= $txn->Object;
 }
 
-my %FIELDS_MAP = (
-    'Warranty Status'     => 'warrantyStatus',
-    'Coverage Start Date' => 'coverageStartDate',
-    'Coverage End Date'   => 'coverageEndDate',
-);
-
 for my $asset ( values %assets ) {
-    my $trademark = $asset->FirstCustomFieldValue('Trademark');
-    next unless $trademark && $trademark eq 'Apple';
-    if ( my $serial = $asset->FirstCustomFieldValue('Serial Number') ) {
+    my @match = grep {$_->[1] and $_->[1] =~ /$CHECKS->{$_->[0]}/}
+        map {[$_, $asset->FirstCustomFieldValue($_)]}
+            keys %$CHECKS;
+    next unless @match;
+
+    if ( my $serial = $asset->FirstCustomFieldValue($serial_name) ) {
         my $gsx  = RT::Extension::Assets::AppleGSX->Client;
         my $info = $gsx->WarrantyStatus($serial);
         if ( $info && $info->{warrantyDetailInfo} ) {
-            for my $field ( keys %FIELDS_MAP ) {
-                if ( defined $info->{warrantyDetailInfo}{ $FIELDS_MAP{$field} } ) {
+            for my $field ( keys %$FIELDS_MAP ) {
+                if ( defined $info->{warrantyDetailInfo}{ $FIELDS_MAP->{$field} } ) {
                     $asset->AddCustomFieldValue(
                         Field => $field,
                         Value =>
-                          $info->{warrantyDetailInfo}{ $FIELDS_MAP{$field} },
+                          $info->{warrantyDetailInfo}{ $FIELDS_MAP->{$field} },
                     );
                 }
                 else {
@@ -112,7 +126,7 @@ for my $asset ( values %assets ) {
         }
     }
     else {
-        for my $field ( keys %FIELDS_MAP ) {
+        for my $field ( keys %$FIELDS_MAP ) {
             my $old = $asset->FirstCustomFieldValue($field);
             if ( defined $old ) {
                 $asset->DeleteCustomFieldValue(
@@ -138,5 +152,8 @@ rt-apple-gsx-set-warranty - set warranty info for apple assets
 
 =head1 DESCRIPTION
 
-This script will incrementally set warranty info for apple assets.
-cron job is recommended.
+This script will incrementally set warranty info for apple assets;
+running it as a cron job is recommended.
+
+See L<RT::Extension::Assets::AppleGSX> for the necessary RT
+configuration.
