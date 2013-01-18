@@ -21,6 +21,10 @@ if ( $opt{help} ) {
     exit;
 }
 
+# Sanity check that the extension is configured
+die "AppleGSXOptions not set; please read the documentation for " .
+    "RT::Extension::Assets::AppleGSX for more on configuring this extension."
+    unless RT->Config->Get('AppleGSXOptions');
 
 my $serial_cf = RT::CustomField->new(RT->SystemUser);
 $serial_cf->Load('Serial Number');
