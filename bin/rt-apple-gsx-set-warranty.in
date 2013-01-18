@@ -1,8 +1,16 @@
 #!/usr/bin/env perl
+### before: #!@PERL@
+
 use strict;
 use warnings;
 
-use lib '/opt/rt4/local/lib', '/opt/rt4/lib';
+BEGIN {
+### after: use lib qw(@RT_LIB_PATH@);
+use lib qw(/opt/rt4-assets/local/lib /opt/rt4-assets/lib);
+use RT;
+RT::LoadConfig();
+RT::Init();
+}
 
 use Getopt::Long;
 my %opt;
@@ -13,9 +21,6 @@ if ( $opt{help} ) {
     exit;
 }
 
-require RT;
-RT::LoadConfig();
-RT::Init();
 
 my $serial_cf = RT::CustomField->new(RT->SystemUser);
 $serial_cf->Load('Serial Number');
@@ -23,7 +28,7 @@ unless ( $serial_cf->id ) {
     die "Custom Field 'Serial Number' not found";
 }
 
-require RT::Attribute;
+
 my $attr = RT::Attribute->new( RT->SystemUser );
 $attr->LoadByNameAndObject( Name => 'AppleGSXTransactionId', Object => RT->System );
 unless ( $attr->id ) {
