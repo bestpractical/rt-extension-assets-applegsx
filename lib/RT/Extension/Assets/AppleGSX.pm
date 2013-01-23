@@ -3,7 +3,7 @@ use warnings;
 package RT::Extension::Assets::AppleGSX;
 use RT::Extension::Assets::AppleGSX::Client;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub Client {
     my $config = RT->System->FirstAttribute('AppleGSXOptions');
