@@ -1,23 +1,16 @@
 use strict;
 use warnings;
 package RT::Extension::Assets::AppleGSX;
+use RT::Extension::Assets::AppleGSX::Client;
 
 our $VERSION = '0.01';
 
-my $client;
-
-sub InitClient {
-    my $class = shift;
-    require RT::Extension::Assets::AppleGSX::Client;
-    $client =
-      RT::Extension::Assets::AppleGSX::Client->new(
-        RT->Config->Get('AppleGSXOptions'),
-      );
-}
-
 sub Client {
-    InitClient() unless $client;
-    return $client;
+    my $config = RT->System->FirstAttribute('AppleGSXOptions');
+    return
+        RT::Extension::Assets::AppleGSX::Client->new(
+            $config ? $config->Content : {},
+        );
 }
 
 =head1 NAME
@@ -54,16 +47,13 @@ or add C<RT::Extension::Assets::AppleGSX> to your existing C<@Plugins> line.
 
 =item Add additional configuration options
 
-You must configure the authentication information used to connect to GSX:
-
-    Set( %AppleGSXOptions,
-        UserId           => 'foo@example.com',
-        Password         => 'secret',
-        ServiceAccountNo => 12345,
-    );
+You must configure the authentication information used to connect to GSX
+via the web UI, at Tools -> Configuration -> Assets -> Apple GSX.  This
+menu option is only available to SuperUsers.
 
 Additionally, if you are not using the supplied custom fields, you may
-wish to Set one or more of the following (their defaults are shown):
+wish to Set one or more of the following in your F<RT_SiteConfig.pm>
+(their defaults are shown):
 
     # Name of custom field containing serial number
     Set( $AppleGSXSerialCF => "Serial Number" )

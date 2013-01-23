@@ -1,0 +1,10 @@
+<%init>
+return unless $session{CurrentUser}->HasRight(
+    Object => RT->System,
+    Right  => 'SuperUser',
+);
+
+my $assets = Menu();
+$assets = $assets->child($_) for qw/tools config assets/;
+$assets->child(gsx => title => "Apple GSX", path => "/Admin/Assets/GSX/");
+</%init>
