@@ -6,6 +6,10 @@ all_from 'lib/RT/Extension/Assets/AppleGSX.pm';
 readme_from 'lib/RT/Extension/Assets/AppleGSX.pm';
 license  'gplv2';
 
+requires 'Class::Accessor::Fast';
+requires 'LWP::UserAgent';
+requires 'XML::Simple';
+
 use Config;
 my $perl_path = $Config{perlpath};
 $perl_path .= $Config{_exe}

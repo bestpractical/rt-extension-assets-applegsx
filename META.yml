@@ -19,6 +19,10 @@ no_index:
     - etc
     - html
     - inc
+requires:
+  Class::Accessor::Fast: 0
+  LWP::UserAgent: 0
+  XML::Simple: 0
 resources:
   license: http://opensource.org/licenses/gpl-license.php
 version: 0.02
