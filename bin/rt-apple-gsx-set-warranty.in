@@ -22,9 +22,9 @@ if ( $opt{help} ) {
 }
 
 # Sanity check that the extension is configured
-die "AppleGSXOptions not set; please read the documentation for " .
+die "Apple GSX authentication not configured; please read the documentation for " .
     "RT::Extension::Assets::AppleGSX for more on configuring this extension."
-    unless RT->Config->Get('AppleGSXOptions');
+    unless RT->System->FirstAttribute('AppleGSXOptions');
 
 
 my $serial_name = RT->Config->Get('AppleGSXSerialCF') || "Serial Number";
