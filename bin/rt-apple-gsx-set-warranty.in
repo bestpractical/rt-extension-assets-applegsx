@@ -26,6 +26,10 @@ die "Apple GSX authentication not configured; please read the documentation for 
     "RT::Extension::Assets::AppleGSX for more on configuring this extension."
     unless RT->System->FirstAttribute('AppleGSXOptions');
 
+my $gsx  = RT::Extension::Assets::AppleGSX->Client;
+die "Apple GSX credentials are incorrect or out-of-date; update them in " .
+    "Tools -> Configuration -> Assets -> Apple GSX"
+    unless $gsx->Authenticate;
 
 my $serial_name = RT->Config->Get('AppleGSXSerialCF') || "Serial Number";
 
@@ -102,7 +106,6 @@ for my $asset ( values %assets ) {
     next unless @match;
 
     if ( my $serial = $asset->FirstCustomFieldValue($serial_name) ) {
-        my $gsx  = RT::Extension::Assets::AppleGSX->Client;
         my $info = $gsx->WarrantyStatus($serial);
         if ( $info && $info->{warrantyDetailInfo} ) {
             for my $field ( keys %$FIELDS_MAP ) {
