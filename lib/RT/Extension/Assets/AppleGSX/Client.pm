@@ -74,7 +74,13 @@ sub WarrantyStatus {
             $res->decoded_content );
     }
     else {
-        warn "failed to get warranty status of serial $serial";
+        my $data = eval { $xs->parse_string( $res->decoded_content, NoAttr => 1, SuppressEmpty => undef ) };
+        if ($data) {
+            warn "Failed to get Apple GSX warranty status of serial $serial: "
+                . $data->{"S:Body"}{"S:Fault"}{"faultstring"};
+        } else {
+            warn "Failed to get Apple GSX warranty status of serial $serial: ".$res->status_line;
+        }
         return;
     }
 }
