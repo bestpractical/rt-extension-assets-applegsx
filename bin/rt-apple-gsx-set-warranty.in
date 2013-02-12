@@ -115,6 +115,14 @@ for my $asset ( values %assets ) {
             my $old = $asset->FirstCustomFieldValue($field);
             my $new = $info->{warrantyDetailInfo}{ $FIELDS_MAP->{$field} };
             if ( defined $new ) {
+                # Canonicalize date and datetime CFs
+                if ($asset->LoadCustomFieldByIdentifier($field)->Type =~ /^date(time)?/i) {
+                    my $datetime = $1;
+                    my $date = RT::Date->new( RT->SystemUser );
+                    $date->Set( Format => 'unknown', Value => $new );
+                    $new = $datetime ? $date->DateTime : $date->Date;
+                }
+
                 $asset->AddCustomFieldValue(
                     Field => $field,
                     Value => $new,
