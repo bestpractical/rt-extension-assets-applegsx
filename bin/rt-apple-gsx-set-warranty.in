@@ -107,21 +107,20 @@ for my $asset ( values %assets ) {
 
     if ( my $serial = $asset->FirstCustomFieldValue($serial_name) ) {
         my $info = $gsx->WarrantyStatus($serial);
-        if ( $info && $info->{warrantyDetailInfo} ) {
-            for my $field ( keys %$FIELDS_MAP ) {
-                my $old = $asset->FirstCustomFieldValue($field);
-                my $new = $info->{warrantyDetailInfo}{ $FIELDS_MAP->{$field} };
-                if ( defined $new ) {
-                    $asset->AddCustomFieldValue(
-                        Field => $field,
-                        Value => $new,
-                    ) if ($old || '') ne $new;
-                } elsif (defined $old) {
-                    $asset->DeleteCustomFieldValue(
-                        Field => $field,
-                        Value => $old,
-                    );
-                }
+        next unless $info;
+        for my $field ( keys %$FIELDS_MAP ) {
+            my $old = $asset->FirstCustomFieldValue($field);
+            my $new = $info->{warrantyDetailInfo}{ $FIELDS_MAP->{$field} };
+            if ( defined $new ) {
+                $asset->AddCustomFieldValue(
+                    Field => $field,
+                    Value => $new,
+                ) if ($old || '') ne $new;
+            } elsif (defined $old) {
+                $asset->DeleteCustomFieldValue(
+                    Field => $field,
+                    Value => $old,
+                );
             }
         }
     }
