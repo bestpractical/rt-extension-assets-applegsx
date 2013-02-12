@@ -99,6 +99,9 @@ while ( my $txn = $txns->Next ) {
     $assets{$txn->ObjectId} ||= $txn->Object;
 }
 
+# GSX returns everything in mm/dd/yy format
+RT->Config->Set( 'DateDayBeforeMonth' => 0 );
+
 for my $asset ( values %assets ) {
     my @match = grep {$_->[1] and $_->[1] =~ /$CHECKS->{$_->[0]}/}
         map {[$_, $asset->FirstCustomFieldValue($_)]}
