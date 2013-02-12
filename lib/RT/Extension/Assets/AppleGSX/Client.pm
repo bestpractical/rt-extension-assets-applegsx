@@ -68,21 +68,24 @@ sub WarrantyStatus {
         }
     );
 
-    my $res = $self->SendRequest($xml);
-    if ( $res->is_success ) {
-        return $self->ParseResponseXML( 'WarrantyStatus',
-            $res->decoded_content );
-    }
-    else {
-        my $data = eval { $xs->parse_string( $res->decoded_content, NoAttr => 1, SuppressEmpty => undef ) };
-        if ($data) {
-            warn "Failed to get Apple GSX warranty status of serial $serial: "
-                . $data->{"S:Body"}{"S:Fault"}{"faultstring"};
-        } else {
-            warn "Failed to get Apple GSX warranty status of serial $serial: ".$res->status_line;
+    for my $try (1..5) {
+        my $res = $self->SendRequest($xml);
+        unless ($res->is_success) {
+            my $data = eval {$xs->parse_string( $res->decoded_content, NoAttr => 1, SuppressEmpty => undef ) };
+            if ($data) {
+                warn "Failed to get Apple GSX warranty status of serial $serial: "
+                    . $data->{"S:Body"}{"S:Fault"}{"faultstring"};
+            } else {
+                warn "Failed to get Apple GSX warranty status of serial $serial: ".$res->status_line;
+            }
+            return;
         }
-        return;
+
+        my $ret = $self->ParseResponseXML( 'WarrantyStatus', $res->decoded_content );
+        return $ret if $ret->{warrantyDetailInfo} and $ret->{warrantyDetailInfo}{serialNumber};
     }
+    warn "Repeatedly failed to get complete response from Apple GSX for serial $serial";
+    return;
 }
 
 sub PrepareXML {
