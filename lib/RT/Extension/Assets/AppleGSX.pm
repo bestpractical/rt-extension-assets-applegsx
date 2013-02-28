@@ -61,6 +61,7 @@ sub UpdateGSX {
         return unless $info;
         for my $field ( keys %$FIELDS_MAP ) {
             my $old = $self->FirstCustomFieldValue($field);
+            $old = '' unless defined $old;
             my $new = $info->{warrantyDetailInfo}{ $FIELDS_MAP->{$field} };
             if ( defined $new ) {
                 # Canonicalize date and datetime CFs
@@ -73,7 +74,7 @@ sub UpdateGSX {
                 $self->AddCustomFieldValue(
                     Field => $field,
                     Value => $new,
-                ) if ($old||'') ne $new;
+                ) if $old ne $new;
             } elsif (defined $old) {
                 $self->DeleteCustomFieldValue(
                     Field => $field,
