@@ -31,17 +31,9 @@ die "Apple GSX credentials are incorrect or out-of-date; update them in " .
     "Tools -> Configuration -> Assets -> Apple GSX"
     unless $gsx->Authenticate;
 
-my $serial_name = RT->Config->Get('AppleGSXSerialCF') || "Serial Number";
-
-my $FIELDS_MAP = RT->Config->Get('AppleGSXMap') || {
-    'Warranty Status'     => 'warrantyStatus',
-    'Warranty Start Date' => 'coverageStartDate',
-    'Warranty End Date'   => 'coverageEndDate',
-};
-
-my $CHECKS = RT->Config->Get('AppleGSXChecks') || {
-    'Trademark' => qr/\bApple(Care)?\b/i,
-};
+my $serial_name = RT::Extension::Assets::AppleGSX->SerialCF;
+my $FIELDS_MAP  = RT::Extension::Assets::AppleGSX->Fields;
+my $CHECKS      = RT::Extension::Assets::AppleGSX->Checks;
 
 # Check that all of the CFs we reference exist
 for my $cfname ($serial_name, keys(%$FIELDS_MAP), keys(%$CHECKS)) {

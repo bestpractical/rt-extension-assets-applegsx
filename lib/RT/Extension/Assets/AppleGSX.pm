@@ -21,6 +21,24 @@ sub Client {
     return $CLIENT;
 }
 
+sub SerialCF {
+    return RT->Config->Get('AppleGSXSerialCF') || "Serial Number";
+}
+
+sub Fields {
+    return RT->Config->Get('AppleGSXMap') || {
+        'Warranty Status'     => 'warrantyStatus',
+        'Warranty Start Date' => 'coverageStartDate',
+        'Warranty End Date'   => 'coverageEndDate',
+    };
+}
+
+sub Checks {
+    return RT->Config->Get('AppleGSXChecks') || {
+        'Trademark' => qr/\bApple(Care)?\b/i,
+    }
+}
+
 =head1 NAME
 
 RT-Extension-Assets-AppleGSX - Apple GSX for RT Assets
