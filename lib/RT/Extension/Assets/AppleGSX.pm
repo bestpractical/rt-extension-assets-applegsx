@@ -39,6 +39,24 @@ sub Checks {
     }
 }
 
+{
+    my $old_create = \&RT::Asset::Create;
+    no warnings 'redefine';
+    *RT::Asset::Create = sub {
+        my $self = shift;
+        my @ret = $old_create->($self, @_);
+        return @ret unless $ret[0];
+
+        RT::Extension::Assets::AppleGSX->Client;
+        unless ($CLIENT->Authenticate) {
+            push @ret, "GSX credentials out of date; cannot import data";
+            return @ret;
+        }
+        $self->UpdateGSX;
+        return @ret;
+    };
+}
+
 package RT::Asset;
 
 sub UpdateGSX {
