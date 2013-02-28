@@ -5,12 +5,20 @@ use RT::Extension::Assets::AppleGSX::Client;
 
 our $VERSION = '0.02';
 
+my $CLIENT;
+my $CLIENT_CACHE;
 sub Client {
     my $config = RT->System->FirstAttribute('AppleGSXOptions');
-    return
-        RT::Extension::Assets::AppleGSX::Client->new(
+    undef $CLIENT
+        if $CLIENT_CACHE and $config and $config->LastUpdatedObj->Unix > $CLIENT_CACHE;
+
+    unless ($CLIENT) {
+        $CLIENT = RT::Extension::Assets::AppleGSX::Client->new(
             $config ? $config->Content : {},
         );
+        $CLIENT_CACHE = $config ? $config->LastUpdatedObj->Unix : -1;
+    }
+    return $CLIENT;
 }
 
 =head1 NAME
