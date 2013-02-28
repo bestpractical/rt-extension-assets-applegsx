@@ -42,58 +42,11 @@ for my $cfname ($serial_name, keys(%$FIELDS_MAP), keys(%$CHECKS)) {
     die "Custom Field '$cfname' not found" unless $cf->id;
 }
 
-
-my $attr = RT::Attribute->new( RT->SystemUser );
-$attr->LoadByNameAndObject( Name => 'AppleGSXTransactionId', Object => RT->System );
-unless ( $attr->id ) {
-    $attr->Create( Name => 'AppleGSXTransactionId', Object => RT->System );
+my $assets = RT::Assets->new( RT->SystemUser );
+$assets->UnLimit;
+while (my $asset = $assets->Next) {
+    $asset->UpdateGSX;
 }
-
-
-my $serial_cf = RT::CustomField->new(RT->SystemUser);
-$serial_cf->Load($serial_name);
-
-my $last_txn_id = $attr->Content;
-my $txns = RT::Transactions->new(RT->SystemUser);
-$txns->Limit(
-    FIELD           => 'ObjectType',
-    VALUE           => 'RT::Asset',
-);
-
-$txns->Limit(
-    FIELD           => 'id',
-    VALUE           => $last_txn_id,
-    OPERATOR        => '>',
-) if $last_txn_id;
-
-$txns->Limit(
-    FIELD           => 'Type',
-    VALUE           => 'Create',
-    SUBCLAUSE       => 'Set',
-);
-
-$txns->Limit(
-    FIELD           => 'Type',
-    VALUE           => 'CustomField',
-    SUBCLAUSE       => 'Set',
-    ENTRYAGGREGATOR => 'OR',
-);
-
-$txns->Limit(
-    FIELD           => 'Field',
-    VALUE           => $serial_cf->id,
-    SUBCLAUSE       => 'Set',
-    ENTRYAGGREGATOR => 'AND',
-);
-
-my %assets;
-while ( my $txn = $txns->Next ) {
-    $assets{$txn->ObjectId} ||= $txn->Object;
-}
-
-$_->UpdateGSX for values %assets;
-
-$attr->SetContent($txns->Last->id) if $txns->Last;
 
 __END__
 
