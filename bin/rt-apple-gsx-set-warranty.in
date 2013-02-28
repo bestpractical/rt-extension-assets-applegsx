@@ -91,54 +91,7 @@ while ( my $txn = $txns->Next ) {
     $assets{$txn->ObjectId} ||= $txn->Object;
 }
 
-# GSX returns everything in mm/dd/yy format
-RT->Config->Set( 'DateDayBeforeMonth' => 0 );
-
-for my $asset ( values %assets ) {
-    my @match = grep {$_->[1] and $_->[1] =~ /$CHECKS->{$_->[0]}/}
-        map {[$_, $asset->FirstCustomFieldValue($_)]}
-            keys %$CHECKS;
-    next unless @match;
-
-    if ( my $serial = $asset->FirstCustomFieldValue($serial_name) ) {
-        my $info = $gsx->WarrantyStatus($serial);
-        next unless $info;
-        for my $field ( keys %$FIELDS_MAP ) {
-            my $old = $asset->FirstCustomFieldValue($field);
-            my $new = $info->{warrantyDetailInfo}{ $FIELDS_MAP->{$field} };
-            if ( defined $new ) {
-                # Canonicalize date and datetime CFs
-                if ($asset->LoadCustomFieldByIdentifier($field)->Type =~ /^date(time)?/i) {
-                    my $datetime = $1;
-                    my $date = RT::Date->new( RT->SystemUser );
-                    $date->Set( Format => 'unknown', Value => $new );
-                    $new = $datetime ? $date->DateTime : $date->Date;
-                }
-
-                $asset->AddCustomFieldValue(
-                    Field => $field,
-                    Value => $new,
-                ) if ($old || '') ne $new;
-            } elsif (defined $old) {
-                $asset->DeleteCustomFieldValue(
-                    Field => $field,
-                    Value => $old,
-                );
-            }
-        }
-    }
-    else {
-        for my $field ( keys %$FIELDS_MAP ) {
-            my $old = $asset->FirstCustomFieldValue($field);
-            if ( defined $old ) {
-                $asset->DeleteCustomFieldValue(
-                    Field => $field,
-                    Value => $old,
-                );
-            }
-        }
-    }
-}
+$_->UpdateGSX for values %assets;
 
 $attr->SetContent($txns->Last->id) if $txns->Last;
 

@@ -39,6 +39,62 @@ sub Checks {
     }
 }
 
+package RT::Asset;
+
+sub UpdateGSX {
+    my $self = shift;
+
+    # GSX returns everything in mm/dd/yy format
+    local $RT::DateDayBeforeMonth = 0;
+
+    my $serial_name = RT::Extension::Assets::AppleGSX->SerialCF;
+    my $FIELDS_MAP = RT::Extension::Assets::AppleGSX->Fields;
+    my $CHECKS = RT::Extension::Assets::AppleGSX->Checks;
+
+    my @match = grep {$_->[1] and $_->[1] =~ /$CHECKS->{$_->[0]}/}
+        map {[$_, $self->FirstCustomFieldValue($_)]}
+            keys %$CHECKS;
+    return unless @match;
+
+    if ( my $serial = $self->FirstCustomFieldValue($serial_name) ) {
+        my $info = $CLIENT->WarrantyStatus($serial);
+        return unless $info;
+        for my $field ( keys %$FIELDS_MAP ) {
+            my $old = $self->FirstCustomFieldValue($field);
+            my $new = $info->{warrantyDetailInfo}{ $FIELDS_MAP->{$field} };
+            if ( defined $new ) {
+                # Canonicalize date and datetime CFs
+                if ($self->LoadCustomFieldByIdentifier($field)->Type =~ /^date(time)?/i) {
+                    my $datetime = $1;
+                    my $date = RT::Date->new( RT->SystemUser );
+                    $date->Set( Format => 'unknown', Value => $new );
+                    $new = $datetime ? $date->DateTime : $date->Date;
+                }
+                $self->AddCustomFieldValue(
+                    Field => $field,
+                    Value => $new,
+                ) if ($old||'') ne $new;
+            } elsif (defined $old) {
+                $self->DeleteCustomFieldValue(
+                    Field => $field,
+                    Value => $old,
+                );
+            }
+        }
+    }
+    else {
+        for my $field ( keys %$FIELDS_MAP ) {
+            my $old = $self->FirstCustomFieldValue($field);
+            if ( defined $old ) {
+                $self->DeleteCustomFieldValue(
+                    Field => $field,
+                    Value => $old,
+                );
+            }
+        }
+    }
+}
+
 =head1 NAME
 
 RT-Extension-Assets-AppleGSX - Apple GSX for RT Assets
