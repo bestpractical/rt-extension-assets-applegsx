@@ -75,6 +75,8 @@ sub UpdateGSX {
     return (0, "GSX does not apply (check ".join(", ",sort keys %$CHECKS)."?)")
         unless @match;
 
+    RT::Extension::Assets::AppleGSX->Client;
+
     if ( my $serial = $self->FirstCustomFieldValue($serial_name) ) {
         my $info = $CLIENT->WarrantyStatus($serial);
         return (0, "GSX contains no information (check $serial_name?)")
