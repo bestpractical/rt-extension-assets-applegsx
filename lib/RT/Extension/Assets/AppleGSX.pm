@@ -72,11 +72,15 @@ sub UpdateGSX {
     my @match = grep {$_->[1] and $_->[1] =~ /$CHECKS->{$_->[0]}/}
         map {[$_, $self->FirstCustomFieldValue($_)]}
             keys %$CHECKS;
-    return unless @match;
+    return (0, "GSX does not apply (check ".join(", ",sort keys %$CHECKS)."?)")
+        unless @match;
 
     if ( my $serial = $self->FirstCustomFieldValue($serial_name) ) {
         my $info = $CLIENT->WarrantyStatus($serial);
-        return unless $info;
+        return (0, "GSX contains no information (check $serial_name?)")
+            unless $info;
+
+        my @results;
         for my $field ( keys %$FIELDS_MAP ) {
             my $old = $self->FirstCustomFieldValue($field);
             $old = '' unless defined $old;
@@ -89,28 +93,36 @@ sub UpdateGSX {
                     $date->Set( Format => 'unknown', Value => $new );
                     $new = $datetime ? $date->DateTime : $date->Date;
                 }
-                $self->AddCustomFieldValue(
-                    Field => $field,
-                    Value => $new,
-                ) if $old ne $new;
+                if ($old ne $new) {
+                    my ($ok, $msg) = $self->AddCustomFieldValue(
+                        Field => $field,
+                        Value => $new,
+                    );
+                    push @results, $msg;
+                }
             } elsif (defined $old) {
-                $self->DeleteCustomFieldValue(
+                my ($ok, $msg) = $self->DeleteCustomFieldValue(
                     Field => $field,
                     Value => $old,
                 );
+                push @results, $msg;
             }
         }
+        return (1, @results);
     }
     else {
+        my @results;
         for my $field ( keys %$FIELDS_MAP ) {
             my $old = $self->FirstCustomFieldValue($field);
             if ( defined $old ) {
-                $self->DeleteCustomFieldValue(
+                my ($ok, $msg) = $self->DeleteCustomFieldValue(
                     Field => $field,
                     Value => $old,
                 );
+                push @results, $msg;
             }
         }
+        return (1, @results);
     }
 }
 
