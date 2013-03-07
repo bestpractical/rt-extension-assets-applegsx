@@ -62,9 +62,6 @@ package RT::Asset;
 sub UpdateGSX {
     my $self = shift;
 
-    # GSX returns everything in mm/dd/yy format
-    local $RT::DateDayBeforeMonth = 0;
-
     my $serial_name = RT::Extension::Assets::AppleGSX->SerialCF;
     my $FIELDS_MAP = RT::Extension::Assets::AppleGSX->Fields;
     my $CHECKS = RT::Extension::Assets::AppleGSX->Checks;
@@ -84,6 +81,13 @@ sub UpdateGSX {
         my $info = $CLIENT->WarrantyStatus($serial);
         return (0, "GSX contains no information (check $serial_name?)")
             unless $info;
+
+        # GSX returns everything in mm/dd/yy format.  Sadly, local'ing
+        # $RT::DateDayBeforeMonth is insufficient (?!).  We set it back,
+        # below; ensure that this function does not return between these
+        # two statements!
+        my $date_order = RT->Config->Get("DateDayBeforeMonth");
+        RT->Config->Set("DateDayBeforeMonth" => 0);
 
         my @results;
         for my $field ( keys %$FIELDS_MAP ) {
@@ -113,6 +117,9 @@ sub UpdateGSX {
                 push @results, $msg;
             }
         }
+
+        RT->Config->Set("DateDayBeforeMonth" => $date_order);
+
         return (1, @results);
     }
     else {
