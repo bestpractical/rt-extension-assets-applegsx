@@ -77,6 +77,9 @@ sub UpdateGSX {
 
     RT::Extension::Assets::AppleGSX->Client;
 
+    return (0, "GSX credentials out of date; cannot import data")
+        unless $CLIENT->Authenticate;
+
     if ( my $serial = $self->FirstCustomFieldValue($serial_name) ) {
         my $info = $CLIENT->WarrantyStatus($serial);
         return (0, "GSX contains no information (check $serial_name?)")
