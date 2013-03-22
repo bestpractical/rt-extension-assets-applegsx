@@ -45,19 +45,25 @@ sub Checks {
     *RT::Asset::Create = sub {
         my $self = shift;
         my @ret = $old_create->($self, @_);
-        return @ret unless $ret[0];
+        return @ret unless $ret[0] and $self->GSXApplies;
 
-        RT::Extension::Assets::AppleGSX->Client;
-        unless ($CLIENT->Authenticate) {
-            push @ret, "GSX credentials out of date; cannot import data";
-            return @ret;
-        }
-        $self->UpdateGSX;
+        my ($ok, @extra) = $self->UpdateGSX;
+        push @ret, @extra unless $ok;
         return @ret;
     };
 }
 
 package RT::Asset;
+
+sub GSXApplies {
+    my $self = shift;
+    my $CHECKS = RT::Extension::Assets::AppleGSX->Checks;
+
+    my @match = grep {$_->[1] and $_->[1] =~ /$CHECKS->{$_->[0]}/}
+        map {[$_, $self->FirstCustomFieldValue($_)]}
+            keys %$CHECKS;
+    return scalar @match;
+}
 
 sub UpdateGSX {
     my $self = shift;
@@ -66,11 +72,8 @@ sub UpdateGSX {
     my $FIELDS_MAP = RT::Extension::Assets::AppleGSX->Fields;
     my $CHECKS = RT::Extension::Assets::AppleGSX->Checks;
 
-    my @match = grep {$_->[1] and $_->[1] =~ /$CHECKS->{$_->[0]}/}
-        map {[$_, $self->FirstCustomFieldValue($_)]}
-            keys %$CHECKS;
     return (0, "GSX does not apply (check ".join(", ",sort keys %$CHECKS)."?)")
-        unless @match;
+        unless $self->GSXApplies;
 
     RT::Extension::Assets::AppleGSX->Client;
 
