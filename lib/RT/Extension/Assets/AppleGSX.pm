@@ -59,10 +59,12 @@ sub GSXApplies {
     my $self = shift;
     my $CHECKS = RT::Extension::Assets::AppleGSX->Checks;
 
-    my @match = grep {$_->[1] and $_->[1] =~ /$CHECKS->{$_->[0]}/}
-        map {[$_, $self->FirstCustomFieldValue($_)]}
-            keys %$CHECKS;
-    return scalar @match;
+    for my $check (keys %$CHECKS) {
+        next unless $self->LoadCustomFieldByIdentifier( $check )->id;
+        my $value = $self->FirstCustomFieldValue($check);
+        return 1 if defined $value and $value =~ /$CHECKS->{$check}/;
+    }
+    return 0;
 }
 
 sub UpdateGSX {
