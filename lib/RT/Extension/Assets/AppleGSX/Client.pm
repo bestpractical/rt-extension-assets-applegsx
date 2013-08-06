@@ -72,11 +72,13 @@ sub WarrantyStatus {
         my $res = $self->SendRequest($xml);
         unless ($res->is_success) {
             my $data = eval {$xs->parse_string( $res->decoded_content, NoAttr => 1, SuppressEmpty => undef ) };
-            if ($data) {
-                warn "Failed to get Apple GSX warranty status of serial $serial: "
-                    . $data->{"S:Body"}{"S:Fault"}{"faultstring"};
+            my $fault = $data ? $data->{"S:Body"}{"S:Fault"}{"faultstring"} : $res->status_line;
+            if ($fault =~ /^The serial number entered has been marked as obsolete/) {
+                # no-op
+            } elsif ($fault =~ /^The serial you entered is not valid/) {
+                # no-op
             } else {
-                warn "Failed to get Apple GSX warranty status of serial $serial: ".$res->status_line;
+                warn "Failed to get Apple GSX warranty status of serial $serial: $fault";
             }
             return;
         }
