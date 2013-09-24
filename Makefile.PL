@@ -8,6 +8,7 @@ license  'gplv2';
 
 requires 'Class::Accessor::Fast';
 requires 'LWP::UserAgent';
+requires 'XML::SAX';
 requires 'XML::Simple';
 
 use Config;

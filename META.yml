@@ -22,6 +22,7 @@ no_index:
 requires:
   Class::Accessor::Fast: 0
   LWP::UserAgent: 0
+  XML::SAX: 0
   XML::Simple: 0
 resources:
   license: http://opensource.org/licenses/gpl-license.php

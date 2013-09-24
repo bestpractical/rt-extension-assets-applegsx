@@ -118,8 +118,10 @@ sub ParseResponseXML {
     my $self   = shift;
     my $method = shift;
     my $xml    = shift;
-    my $ret    = $xs->XMLin( $xml, NoAttr => 1, SuppressEmpty => undef );
-    return $ret->{'S:Body'}{"ns3:${method}Response"}{"${method}Response"};
+    my $ret    = $xs->XMLin( $xml, NoAttr => 1, SuppressEmpty => undef, NSExpand => 1 );
+    return $ret->{'{http://schemas.xmlsoap.org/soap/envelope/}Body'}
+        ->{"{http://gsxws.apple.com/elements/global}${method}Response"}
+        ->{"${method}Response"};
 }
 
 sub SendRequest {
