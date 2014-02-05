@@ -26,4 +26,4 @@ requires:
   XML::Simple: 0
 resources:
   license: http://opensource.org/licenses/gpl-license.php
-version: 0.02
+version: 1.0
