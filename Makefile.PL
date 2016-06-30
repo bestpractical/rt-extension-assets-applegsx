@@ -8,6 +8,9 @@ license  'gplv2';
 
 requires 'Class::Accessor::Fast';
 requires 'LWP::UserAgent';
+requires 'LWP::Protocol::https';
+requires 'IO::Socket::SSL';
+requires 'Net::SSLeay';
 requires 'XML::SAX';
 requires 'XML::Simple';
 
