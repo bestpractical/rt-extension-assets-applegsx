@@ -30,6 +30,6 @@ requires:
   perl: 5.8.3
 resources:
   license: http://opensource.org/licenses/gpl-license.php
-version: '1.0'
+version: '1.1'
 x_module_install_rtx_version: '0.37'
 x_requires_rt: 4.0.0

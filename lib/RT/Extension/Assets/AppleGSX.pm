@@ -3,7 +3,7 @@ use warnings;
 package RT::Extension::Assets::AppleGSX;
 use RT::Extension::Assets::AppleGSX::Client;
 
-our $VERSION = '1.0';
+our $VERSION = '1.1';
 
 my $CLIENT;
 my $CLIENT_CACHE;
