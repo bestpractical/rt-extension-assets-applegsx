@@ -10,8 +10,8 @@ my $xs = XML::Simple->new;
 
 use base 'Class::Accessor::Fast';
 __PACKAGE__->mk_accessors(
-    qw/UserAgent UserSessionId UserSessionTimeout UserId Password
-      ServiceAccountNo Lang UserTimeZone/
+    qw/UserAgent UserSessionId UserSessionTimeout UserId UserTimeZone
+      ServiceAccountNo LanguageCode CertFilePath KeyFilePath/
 );
 
 sub new {
@@ -19,6 +19,8 @@ sub new {
     my $args  = ref $_[0] eq 'HASH' ? shift @_ : {@_};
     my $self  = $class->SUPER::new($args);
     $self->UserAgent( LWP::UserAgent->new() ) unless $self->UserAgent;
+    $self->UserAgent->ssl_opts( SSL_cert_file => $self->CertFilePath,
+                                SSL_key_file => $self->KeyFilePath );
     return $self;
 }
 
@@ -29,10 +31,9 @@ sub Authenticate {
         'Authenticate',
         {
             userId           => $self->UserId,
-            password         => $self->Password,
             serviceAccountNo => $self->ServiceAccountNo,
-            languageCode     => 'en',
-            userTimeZone     => 'CEST',
+            languageCode     => $self->LanguageCode,
+            userTimeZone     => $self->UserTimeZone,
         }
     );
 
@@ -48,7 +49,7 @@ sub Authenticate {
         return $self->UserSessionId;
     }
     else {
-        warn "failed to auth gsx: " . $res->status_line;
+        warn "Failed to authenticate to Apple GSX: " . $res->status_line;
         return;
     }
 }
@@ -64,7 +65,8 @@ sub WarrantyStatus {
         'WarrantyStatus',
         {
             'userSession' => { userSessionId => $self->UserSessionId, },
-            'unitDetail'  => { serialNumber  => $serial, }
+            'unitDetail'  => { serialNumber  => $serial,
+                               shipTo        => $self->ServiceAccountNo }
         }
     );
 
@@ -97,8 +99,8 @@ sub PrepareXML {
 
     my $xml = $xs->XMLout(
         {
-            'SOAP-ENV:Body' =>
-              { "ns1:$method" => { "${method}Request" => $args, }, },
+            'soapenv:Body' =>
+              { "glob:$method" => { "${method}Request" => $args, }, },
         },
         NoAttr   => 1,
         KeyAttr  => [],
@@ -106,10 +108,10 @@ sub PrepareXML {
     );
     return <<"EOF",
 <?xml version="1.0" encoding="UTF-8"?>
-<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
-xmlns:ns1="http://gsxws.apple.com/elements/global">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+xmlns:glob="http://gsxws.apple.com/elements/global">
 $xml
-</SOAP-ENV:Envelope>
+</soapenv:Envelope>
 EOF
 
 }
@@ -128,7 +130,7 @@ sub SendRequest {
     my $self = shift;
     my $xml  = shift;
     my $res  = $self->UserAgent->post(
-        'https://gsxws2.apple.com/gsx-ws/services/am/asp',
+        'https://gsxapi.apple.com/gsx-ws/services/am/asp',
         'Content-Type' => 'text/xml; charset=utf-8',
         Content        => $xml,
     );

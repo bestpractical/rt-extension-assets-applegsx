@@ -3,7 +3,7 @@
 
 % unless ($ok) {
 <&| /Widgets/TitleBox, title => loc('Authentication failure'), class => "error" &>
-Credentials below are incorrect!
+Unable to connect to the Apple GSX services using the provided account information and configured certificates. Confirm you have valid certificates and that you have been whitelisted by Apple.
 </&>
 % }
 
@@ -13,12 +13,24 @@ Credentials below are incorrect!
     <td><input name="UserId" id="UserId" value="<% $UserId %>" size="20" /></td>
 </tr>
 
-<tr><td class="label"><label for="Password"><&|/l&>Password</&></label></td>
-    <td><input name="Password" id="Password" type="password" size="20" /></td>
-</tr>
-
 <tr><td class="label"><label for="ServiceAccountNo"><&|/l&>Service Account #</&></label></td>
     <td><input name="ServiceAccountNo" id="ServiceAccountNo" value="<% $ServiceAccountNo %>" size="20" /></td>
+</tr>
+
+<tr><td class="label"><label for="UserTimeZone"><&|/l&>User Timezone</&></label></td>
+    <td><input name="UserTimeZone" id="UserTimeZone" value="<% $UserTimeZone %>" size="20" /></td>
+</tr>
+
+<tr><td class="label"><label for="LanguageCode"><&|/l&>Language Code</&></label></td>
+    <td><input name="LanguageCode" id="LanguageCode" value="<% $LanguageCode %>" size="20" /></td>
+</tr>
+
+<tr><td class="label"><label for="CertFilePath"><&|/l&>Certificate File Path</&></label></td>
+    <td><input name="CertFilePath" id="CertFilePath" value="<% $CertFilePath %>" size="60" /></td>
+</tr>
+
+<tr><td class="label"><label for="KeyFilePath"><&|/l&>Key File Path</&></label></td>
+    <td><input name="KeyFilePath" id="KeyFilePath" value="<% $KeyFilePath %>" size="60" /></td>
 </tr>
 </table>
 
@@ -34,22 +46,35 @@ my $config = RT->System->FirstAttribute('AppleGSXOptions');
 $config = $config ? $config->Content : {};
 if ($ARGS{Update}) {
     $config->{UserId}           = $UserId;
-    $config->{Password}         = $Password if $Password;
     $config->{ServiceAccountNo} = $ServiceAccountNo;
+    $config->{UserTimeZone}     = $UserTimeZone;
+    $config->{LanguageCode}     = $LanguageCode;
+    $config->{CertFilePath}     = $CertFilePath;
+    $config->{KeyFilePath}      = $KeyFilePath;
     RT->System->SetAttribute( Name => 'AppleGSXOptions', Content => $config );
 }
 
 my $gsx = RT::Extension::Assets::AppleGSX->Client;
 my $ok = $config->{UserId}
-      && $config->{Password}
       && $config->{ServiceAccountNo}
+      && $config->{UserTimeZone}
+      && $config->{LanguageCode}
+      && $config->{CertFilePath}
+      && $config->{KeyFilePath}
       && $gsx->Authenticate;
 
 $UserId           = $config->{UserId};
 $ServiceAccountNo = $config->{ServiceAccountNo};
+$UserTimeZone     = $config->{UserTimeZone} if $config->{UserTimeZone};
+$LanguageCode     = $config->{LanguageCode} if $config->{LanguageCode};
+$CertFilePath     = $config->{CertFilePath};
+$KeyFilePath      = $config->{KeyFilePath};
 </%init>
 <%args>
 $UserId => ""
-$Password => ""
 $ServiceAccountNo => ""
+$UserTimeZone => "PST"
+$LanguageCode => "en"
+$CertFilePath => ""
+$KeyFilePath => ""
 </%args>

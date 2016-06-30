@@ -79,7 +79,7 @@ sub UpdateGSX {
 
     RT::Extension::Assets::AppleGSX->Client;
 
-    return (0, "GSX credentials out of date; cannot import data")
+    return (0, "Apple GSX authentication failed; cannot import data")
         unless $CLIENT->Authenticate;
 
     if ( my $serial = $self->FirstCustomFieldValue($serial_name) ) {
@@ -175,11 +175,29 @@ Add this line:
 
 or add C<RT::Extension::Assets::AppleGSX> to your existing C<@Plugins> line.
 
-=item Add additional configuration options
+=item Add configuration options to C<RT_SiteConfig.pm>
 
-You must configure the authentication information used to connect to GSX
-via the web UI, at Tools -> Configuration -> Assets -> Apple GSX.  This
-menu option is only available to SuperUsers.
+See L<CONFIGURATION> below for options.
+
+=item Run F</opt/rt4-assets/local/plugins/RT-Extension-Assets-AppleGSX/bin/rt-apple-gsx-set-warranty>
+
+You will likely wish to configure this script to run regularly, via a cron job.
+
+=back
+
+=head1 CONFIGURATION
+
+To connect to Apple's GSX service, you must first contact Apple to
+create an account. Once you have an account with a user ID and service
+account number, you must then get certificate and key files from Apple
+and your server IP addresses must be whitelisted by Apple.
+
+Once you have done this, you can configure the authentication information
+used to connect to GSX via the web UI, at Tools -> Configuration ->
+Assets -> Apple GSX. This menu option is only available to SuperUsers.
+Depending on the services you are using, the RT webserver user and
+the user running any cron jobs will need read access to the certificate
+and key files on your server.
 
 Additionally, if you are not using the supplied custom fields, you may
 wish to Set one or more of the following in your F<RT_SiteConfig.pm>
@@ -200,11 +218,6 @@ wish to Set one or more of the following in your F<RT_SiteConfig.pm>
     Set( %AppleGSXChecks,
         'Trademark' => qr/\bApple(Care)?\b/i,
     );
-
-
-=item Run F</opt/rt4-assets/local/plugins/RT-Extension-Assets-AppleGSX/bin/rt-apple-gsx-set-warranty>
-
-You will likely wish to configure this script to run regularly, via a cron job.
 
 =head1 AUTHOR
 
