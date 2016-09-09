@@ -18,9 +18,9 @@ sub new {
     my $class = shift;
     my $args  = ref $_[0] eq 'HASH' ? shift @_ : {@_};
     my $self  = $class->SUPER::new($args);
+    $ENV{HTTPS_CERT_FILE} = $self->CertFilePath;
+    $ENV{HTTPS_KEY_FILE} = $self->KeyFilePath;
     $self->UserAgent( LWP::UserAgent->new() ) unless $self->UserAgent;
-    $self->UserAgent->ssl_opts( SSL_cert_file => $self->CertFilePath,
-                                SSL_key_file => $self->KeyFilePath );
     return $self;
 }
 
@@ -50,6 +50,7 @@ sub Authenticate {
     }
     else {
         warn "Failed to authenticate to Apple GSX: " . $res->status_line;
+        warn "Full response: " . $res->content;
         return;
     }
 }
@@ -110,6 +111,7 @@ sub PrepareXML {
 <?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
 xmlns:glob="http://gsxws.apple.com/elements/global">
+<soapenv:Header/>
 $xml
 </soapenv:Envelope>
 EOF
