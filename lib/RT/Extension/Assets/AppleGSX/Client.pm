@@ -131,8 +131,15 @@ sub ParseResponseXML {
 sub SendRequest {
     my $self = shift;
     my $xml  = shift;
+
+    my $domain = 'https://gsxapi.apple.com';
+
+    # Apple standard appears to be to use 'Test' for testing environment
+    # certs.
+    $domain = 'https://gsxapiut.apple.com' if $self->CertFilePath =~ /Test/;
+
     my $res  = $self->UserAgent->post(
-        'https://gsxapi.apple.com/gsx-ws/services/am/asp',
+        "$domain/gsx-ws/services/am/asp",
         'Content-Type' => 'text/xml; charset=utf-8',
         Content        => $xml,
     );
