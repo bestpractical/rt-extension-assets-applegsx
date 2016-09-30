@@ -3,6 +3,7 @@ use warnings;
 
 package RT::Extension::Assets::AppleGSX::Client;
 
+use Net::SSL;
 use LWP::UserAgent;
 
 use XML::Simple;
@@ -20,7 +21,7 @@ sub new {
     my $self  = $class->SUPER::new($args);
     $ENV{HTTPS_CERT_FILE} = $self->CertFilePath;
     $ENV{HTTPS_KEY_FILE} = $self->KeyFilePath;
-    $self->UserAgent( LWP::UserAgent->new() ) unless $self->UserAgent;
+    $self->UserAgent( LWP::UserAgent->new(ssl_opts => { verify_hostname => 0 }) ) unless $self->UserAgent;
     return $self;
 }
 
