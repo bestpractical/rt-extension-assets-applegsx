@@ -6,52 +6,48 @@ package RT::Extension::Assets::AppleGSX::Client;
 use Net::SSL;
 use LWP::UserAgent;
 
-use XML::Simple;
-my $xs = XML::Simple->new;
+use JSON;
 
 use base 'Class::Accessor::Fast';
 __PACKAGE__->mk_accessors(
-    qw/UserAgent UserSessionId UserSessionTimeout UserId UserTimeZone
-      ServiceAccountNo LanguageCode CertFilePath KeyFilePath/
+    qw/UserAgent ActivationToken AuthenticationToken UserId UserTimeZone
+      ServiceAccountNo LanguageCode CertFilePath KeyFilePath AppleGSXApiBase/
 );
 
 sub new {
     my $class = shift;
     my $args  = ref $_[0] eq 'HASH' ? shift @_ : {@_};
     my $self  = $class->SUPER::new($args);
+
     $ENV{HTTPS_CERT_FILE} = $self->CertFilePath;
     $ENV{HTTPS_KEY_FILE} = $self->KeyFilePath;
+    my $store_code = sprintf( "%010d", $self->ServiceAccountNo);
+
     $self->UserAgent( LWP::UserAgent->new(ssl_opts => { verify_hostname => 0 }) ) unless $self->UserAgent;
+    my $default_headers = HTTP::Headers->new(
+        'X-Apple-SoldTo' => $store_code,
+        'X-Apple-ShipTo' => $store_code,
+    );
+    $self->UserAgent->default_headers( $default_headers );
+
+    # by default use the testing (-uat) URLs for both the API and getting the initial token
+    $self->{AppleGSXApiBase}  ||= 'https://partner-connect-uat.apple.com/gsx/api';
+    $self->{AppleGSXGetToken} ||= 'https://gsx2-uat.apple.com/gsx/api/login';
+
     return $self;
 }
 
+# may need a name change, this does not authenticate, but just checks that the API is accessible
 sub Authenticate {
     my $self = shift;
 
-    my $xml = $self->PrepareXML(
-        'Authenticate',
-        {
-            userId           => $self->UserId,
-            serviceAccountNo => $self->ServiceAccountNo,
-            languageCode     => $self->LanguageCode,
-            userTimeZone     => $self->UserTimeZone,
-        }
-    );
-
-    my $res = $self->SendRequest($xml);
+    my %headers = ( Accept => 'text/plain' );
+    my $res = $self->UserAgent->get( $self->AppleGSXApiBase . "/authenticate/check", %headers );
     if ( $res->is_success ) {
-        my $ret =
-          $self->ParseResponseXML( 'Authenticate', $res->decoded_content );
-        $self->UserSessionId( $ret->{'userSessionId'} );
-
-        # official timeout is 30 minutes, minus 5 is to avoid potential
-        # out of sync time issue
-        $self->UserSessionTimeout( time() + 25 * 60 );
-        return $self->UserSessionId;
+        return 1;
     }
     else {
-        warn "Failed to authenticate to Apple GSX: " . $res->status_line;
-        warn "Full response: " . $res->content;
+        RT->Logger->error( "Failed to authenticate to Apple GSX: " . $res->status_line );
         return;
     }
 }
@@ -60,91 +56,107 @@ sub WarrantyStatus {
     my $self = shift;
     my $serial = shift or return;
 
-    $self->Authenticate
-      unless $self->UserSessionId && time() < $self->UserSessionTimeout;
-
-    my $xml = $self->PrepareXML(
-        'WarrantyStatus',
-        {
-            'userSession' => { userSessionId => $self->UserSessionId, },
-            'unitDetail'  => { serialNumber  => $serial,
-                               shipTo        => $self->ServiceAccountNo }
-        }
-    );
-
-    for my $try (1..5) {
-        my $res = $self->SendRequest($xml);
-        unless ($res->is_success) {
-            my $data = eval {$xs->parse_string( $res->decoded_content, NoAttr => 1, SuppressEmpty => undef ) };
-            my $fault = $data ? $data->{"S:Body"}{"S:Fault"}{"faultstring"} : $res->status_line;
-            if ($fault =~ /^The serial number entered has been marked as obsolete/) {
-                # no-op
-            } elsif ($fault =~ /^The serial you entered is not valid/) {
-                # no-op
-            } else {
-                warn "Failed to get Apple GSX warranty status of serial $serial: $fault";
-            }
-            return;
-        }
-
-        my $ret = $self->ParseResponseXML( 'WarrantyStatus', $res->decoded_content );
-        return $ret if $ret->{warrantyDetailInfo} and $ret->{warrantyDetailInfo}{serialNumber};
+    my( $ret, $msg, $device )= $self->GetDataForSerial( $serial );
+    if( ! $ret ) {
+        return( 0, $msg, undef);
     }
-    warn "Repeatedly failed to get complete response from Apple GSX for serial $serial";
-    return;
+    if( ! $device->{warrantyInfo} ) {
+        RT->Logger->warning( "no warantyInfo returned (for sn $serial)" );
+        return( 0, "no warantyInfo returned" );
+    }
+    return ( 1, '', $device->{warrantyInfo});
 }
 
-sub PrepareXML {
-    my $self   = shift;
-    my $method = shift;
-    my $args   = shift || {};
-
-    my $xml = $xs->XMLout(
-        {
-            'soapenv:Body' =>
-              { "glob:$method" => { "${method}Request" => $args, }, },
-        },
-        NoAttr   => 1,
-        KeyAttr  => [],
-        RootName => '',
-    );
-    return <<"EOF",
-<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-xmlns:glob="http://gsxws.apple.com/elements/global">
-<soapenv:Header/>
-$xml
-</soapenv:Envelope>
-EOF
-
-}
-
-sub ParseResponseXML {
-    my $self   = shift;
-    my $method = shift;
-    my $xml    = shift;
-    my $ret    = $xs->XMLin( $xml, NoAttr => 1, SuppressEmpty => undef, NSExpand => 1 );
-    return $ret->{'{http://schemas.xmlsoap.org/soap/envelope/}Body'}
-        ->{"{http://gsxws.apple.com/elements/global}${method}Response"}
-        ->{"${method}Response"};
-}
-
-sub SendRequest {
+sub GetDataForSerial {
     my $self = shift;
-    my $xml  = shift;
+    my $serial = shift or return;
 
-    my $domain = 'https://gsxapi.apple.com';
+    my $token = $self->AuthenticationToken;
 
-    # Apple standard appears to be to use 'Test' for testing environment
-    # certs.
-    $domain = 'https://gsxapiut.apple.com' if $self->CertFilePath =~ /Test/;
-
-    my $res  = $self->UserAgent->post(
-        "$domain/gsx-ws/services/am/asp",
-        'Content-Type' => 'text/xml; charset=utf-8',
-        Content        => $xml,
+    my %headers = (
+        'X-Apple-Auth-Token' => $token,
+        'Content-Type'       => 'application/json',
+        'Accept'             => 'application/json',
     );
-    return $res;
+
+    my $args = { "device" => { "id" => $serial } };
+    my $json = encode_json( $args );
+    my $response;
+
+    # only try if we have a token, otherwise we need to get one first
+    if( $token) {
+        $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/repair/product/details", Content => $json, %headers );
+    }
+
+    if( ! $token || $response->code == 401 ) {
+        my( $ret, $msg, $new_token );
+        if( $token ) {
+            ( $ret, $msg, $new_token )= $self->get_new_authentication_token( $token );
+        }
+        if( ! $token || ! $ret) {
+            ( $ret, $msg, $new_token)= $self->get_new_authentication_token( $self->ActivationToken );
+        }
+
+        if( $ret) {
+            RT->Logger->debug( "got new authentication token");
+            $headers{'X-Apple-Auth-Token'} = $new_token;
+            $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/repair/product/details", Content => $json, %headers);
+        }
+        else {
+            return ( 0, "error connecting to the GSX API: $msg", undef);
+        }
+    }
+
+    if( $response->is_success ) {
+        my $product_details = decode_json( $response->decoded_content );
+        my $device = $product_details->{device};
+
+        # we set a couple of fields that were named differently in the old API, so old code still workd
+        # old warrantyStatus is new warrantyStatusDescription
+        $device->{warrantyInfo}->{warrantyStatus} = $device->{warrantyInfo}->{warrantyStatusDescription};
+        # old estimatedPurchaseDate is new purchaseDate (in warrantyInfo)
+        $device->{estimatedPurchaseDate} = $device->{warrantyInfo}->{purchaseDate};
+
+        return( 1, '', $device);
+    }
+    else {
+        RT->Logger->warning( "Failed to get response from Apple GSX for serial $serial" );
+        return( 0, "Failed to get response from Apple GSX for serial $serial" );
+    }
+}
+
+sub get_new_authentication_token {
+    my $self = shift;
+    my $old_token= shift;
+
+    my $data = { userAppleId => $self->UserId, authToken => $old_token };
+    my $json = encode_json( $data);
+    my %headers = (
+        'Content-Type' => 'application/json',
+        Accept => 'application/json',
+    );
+    my $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/authenticate/token", Content => $json, %headers );
+    if( $response->code == 200 ) {
+        my $json_string = $response->decoded_content;
+        my $response_json = decode_json( $json_string);
+
+        my $new_authentication_token = $response_json->{authToken};
+
+        $self->AuthenticationToken( $new_authentication_token);
+
+        # save the token in the AppleGSXOptions attribute
+        my $config= RT->System->FirstAttribute('AppleGSXOptions');
+        my $content = $config->Content;
+        $content->{AuthenticationToken} = $new_authentication_token;
+        # $config->SetContent( $content);
+        RT->System->SetAttribute( Name => 'AppleGSXOptions', Content => $content );
+
+        return ( 1, '', $new_authentication_token);
+    }
+    else {
+        RT->Logger->error( "Failed to get authentication token" );
+        return( 0, "cannot get authentication token: " . $response->code, undef);
+    }
 }
 
 1;

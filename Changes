@@ -1,3 +1,8 @@
+2.0 1019-08-29
+
+ - Update to use Apple's GSX 2 system, with a different API and
+   authentication scheme
+
 1.1 2016-06-30
 
  - Update to accomodate changes to the Apple GSX authentication
