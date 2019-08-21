@@ -32,6 +32,11 @@ Unable to connect to the Apple GSX services using the provided account informati
 <tr><td class="label"><label for="KeyFilePath"><&|/l&>Key File Path</&></label></td>
     <td><input name="KeyFilePath" id="KeyFilePath" value="<% $KeyFilePath %>" size="60" /></td>
 </tr>
+<tr><td class="label"><label for="ActivationToken"><&|/l&>Activation Token</&></label></td>
+    <td><input name="ActivationToken" id="ActivationToken" value="<% $ActivationToken %>" size="60" /><br />
+    In case of problem get a new activation token from <a href="<% $get_activation_token_url %>"><% $get_activation_token_url %></a>.</td>
+</tr>
+
 </table>
 
 <& /Elements/Submit, Name => "Update", Label => loc('Update') &>
@@ -42,6 +47,10 @@ $m->clear_and_abort(403) unless $session{'CurrentUser'}->HasRight(
     Right  => 'SuperUser',
 );
 
+my $show_token = RT->Config->Get('AppleGSXShowAuthenticationToken');
+
+my $get_activation_token_url = RT->Config->Get('AppleGSXGetToken');
+
 my $config = RT->System->FirstAttribute('AppleGSXOptions');
 $config = $config ? $config->Content : {};
 if ($ARGS{Update}) {
@@ -51,6 +60,7 @@ if ($ARGS{Update}) {
     $config->{LanguageCode}     = $LanguageCode;
     $config->{CertFilePath}     = $CertFilePath;
     $config->{KeyFilePath}      = $KeyFilePath;
+    $config->{ActivationToken}  = $ActivationToken;
     RT->System->SetAttribute( Name => 'AppleGSXOptions', Content => $config );
 }
 
@@ -61,6 +71,7 @@ my $ok = $config->{UserId}
       && $config->{LanguageCode}
       && $config->{CertFilePath}
       && $config->{KeyFilePath}
+      && $config->{ActivationToken}
       && $gsx->Authenticate;
 
 $UserId           = $config->{UserId};
@@ -69,6 +80,8 @@ $UserTimeZone     = $config->{UserTimeZone} if $config->{UserTimeZone};
 $LanguageCode     = $config->{LanguageCode} if $config->{LanguageCode};
 $CertFilePath     = $config->{CertFilePath};
 $KeyFilePath      = $config->{KeyFilePath};
+$ActivationToken  = $config->{ActivationToken};
+
 </%init>
 <%args>
 $UserId => ""
@@ -77,4 +90,5 @@ $UserTimeZone => "PST"
 $LanguageCode => "en"
 $CertFilePath => ""
 $KeyFilePath => ""
+$ActivationToken => ""
 </%args>

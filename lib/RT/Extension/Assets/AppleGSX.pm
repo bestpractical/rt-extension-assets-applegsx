@@ -3,7 +3,7 @@ use warnings;
 package RT::Extension::Assets::AppleGSX;
 use RT::Extension::Assets::AppleGSX::Client;
 
-our $VERSION = '1.2';
+our $VERSION = '2.0';
 
 my $CLIENT;
 my $CLIENT_CACHE;
@@ -27,7 +27,7 @@ sub SerialCF {
 
 sub Fields {
     return RT->Config->Get('AppleGSXMap') || {
-        'Warranty Status'     => 'warrantyStatus',
+        'Warranty Status'     => 'warrantyStatusCode',
         'Warranty Start Date' => 'coverageStartDate',
         'Warranty End Date'   => 'coverageEndDate',
     };
@@ -82,22 +82,18 @@ sub UpdateGSX {
     return (0, "Apple GSX authentication failed; cannot import data")
         unless $CLIENT->Authenticate;
 
-    if ( my $serial = $self->FirstCustomFieldValue($serial_name) ) {
-        my $info = $CLIENT->WarrantyStatus($serial);
-        return (0, "GSX contains no information (check $serial_name?)")
-            unless $info;
-
-        # GSX returns everything in mm/dd/yy format.  Sadly, local'ing
-        # $RT::DateDayBeforeMonth is insufficient (?!).  We set it back,
-        # below; ensure that this function does not return between these
-        # two statements!
-        my $date_order = RT->Config->Get("DateDayBeforeMonth");
-        RT->Config->Set("DateDayBeforeMonth" => 0);
+    if ( my $serial = $self->FirstCustomFieldValue( $serial_name ) ) {
+        my( $ret, $msg, $device ) = $CLIENT->GetDataForSerial( $serial );
+        if( ! $ret ) {
+            return (0, $msg)
+        }
 
         my @results;
         for my $field ( keys %$FIELDS_MAP ) {
             my $old = $self->FirstCustomFieldValue($field);
-            my $new = $info->{warrantyDetailInfo}{ $FIELDS_MAP->{$field} };
+            # data is either at device level or in $device->{warrantyInfo}
+            # the old mapping doesn't know about those 2 levels so we look in both places
+            my $new = $device->{ $FIELDS_MAP->{$field} } || $device->{warrantyInfo}{ $FIELDS_MAP->{$field} };
             if ( defined $new ) {
                 # Canonicalize date and datetime CFs
                 if ($self->LoadCustomFieldByIdentifier($field)->Type =~ /^date(time)?/i) {
@@ -122,8 +118,6 @@ sub UpdateGSX {
                 push @results, $msg;
             }
         }
-
-        RT->Config->Set("DateDayBeforeMonth" => $date_order);
 
         return (1, @results);
     }
