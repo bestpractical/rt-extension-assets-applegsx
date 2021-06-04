@@ -3,7 +3,7 @@ use warnings;
 package RT::Extension::Assets::AppleGSX;
 use RT::Extension::Assets::AppleGSX::Client;
 
-our $VERSION = '2.0';
+our $VERSION = '2.01';
 
 my $CLIENT;
 my $CLIENT_CACHE;
@@ -143,6 +143,9 @@ RT-Extension-Assets-AppleGSX - Apple GSX for RT Assets
 
 =head1 INSTALLATION
 
+Note that starting with version 2 of this extension, it works only
+with the Apple GSX API version 2.
+
 =over
 
 =item perl Makefile.PL
@@ -215,7 +218,7 @@ wish to Set one or more of the following in your F<RT_SiteConfig.pm>
 
 =head1 AUTHOR
 
-sunnavy <sunnavy@bestpractical.com>
+Best Practical Solutions <modules@bestpractical.com>
 
 =head1 BUGS
 

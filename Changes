@@ -1,4 +1,10 @@
-2.0 1019-08-29
+Revision history for RT-Extension-Assets-AppleGSX
+
+2.01 2021-06-04
+
+ - Add required X-Apple-Service-Version header to calls for version 2 API.
+
+2.0 2019-08-29
 
  - Update to use Apple's GSX 2 system, with a different API and
    authentication scheme

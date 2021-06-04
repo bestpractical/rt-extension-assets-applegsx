@@ -2,6 +2,9 @@ NAME
     RT-Extension-Assets-AppleGSX - Apple GSX for RT Assets
 
 INSTALLATION
+    Note that starting with version 2 of this extension, it works only with
+    the Apple GSX API version 2.
+
     perl Makefile.PL
     make
     make install
@@ -38,21 +41,6 @@ CONFIGURATION
     account number, you must then get certificate and key files from Apple
     and your server IP addresses must be whitelisted by Apple.
 
-    The configuration for the service uses the following variables:
-
-        # test server
-        Set( $AppleGSXApiBase,  'https://partner-connect-uat.apple.com/gsx/api');
-        Set( $AppleGSXGetToken, 'https://gsx2-uat.apple.com/gsx/api/login');
-
-    or
-
-        # production server
-        Set( $AppleGSXApiBase,  'https://partner-connect.apple.com/gsx/api');
-        Set( $AppleGSXGetToken, 'https://gsx2.apple.com/gsx/api/login');
-
-    plus the user ID that you use to get the initial activation token
-        Set( $AppleGSXUserId,  '<Apple user ID, an email address');
-
     Once you have done this, you can configure the authentication
     information used to connect to GSX via the web UI, at Tools ->
     Configuration -> Assets -> Apple GSX. This menu option is only available
@@ -81,7 +69,7 @@ CONFIGURATION
         );
 
 AUTHOR
-    sunnavy <sunnavy@bestpractical.com>
+    Best Practical Solutions <modules@bestpractical.com>
 
 BUGS
     All bugs should be reported via
