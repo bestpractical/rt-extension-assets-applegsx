@@ -27,6 +27,7 @@ sub new {
     my $default_headers = HTTP::Headers->new(
         'X-Apple-SoldTo' => $store_code,
         'X-Apple-ShipTo' => $store_code,
+        'X-Apple-Service-Version' => 'v2',
     );
     $self->UserAgent->default_headers( $default_headers );
 
