@@ -7,6 +7,7 @@ use Net::SSL;
 use LWP::UserAgent;
 
 use JSON;
+use Data::Dumper;
 
 use base 'Class::Accessor::Fast';
 __PACKAGE__->mk_accessors(
@@ -43,12 +44,15 @@ sub Authenticate {
     my $self = shift;
 
     my %headers = ( Accept => 'text/plain' );
+    RT->Logger->debug("Calling GSX /authenticate/check with headers: " . $self->UserAgent->default_headers->as_string . " and " . Dumper(\%headers));
     my $res = $self->UserAgent->get( $self->AppleGSXApiBase . "/authenticate/check", %headers );
     if ( $res->is_success ) {
         return 1;
     }
     else {
         RT->Logger->error( "Failed to authenticate to Apple GSX: " . $res->status_line );
+        my $string = $res->decoded_content;
+        RT->Logger->debug("Response content is: $string");
         return;
     }
 }
