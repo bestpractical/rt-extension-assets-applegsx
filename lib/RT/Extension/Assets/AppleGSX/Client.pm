@@ -8,6 +8,7 @@ use LWP::UserAgent;
 
 use JSON;
 use Data::Dumper;
+use LWP::ConsoleLogger::Easy qw( debug_ua );
 
 use base 'Class::Accessor::Fast';
 __PACKAGE__->mk_accessors(
@@ -21,7 +22,23 @@ sub new {
     my $self  = $class->SUPER::new($args);
 
     $ENV{HTTPS_CERT_FILE} = $self->CertFilePath;
+
+    if ( -r $ENV{HTTPS_CERT_FILE} ) {
+        RT->Logger->debug("RT can read HTTPS_CERT_FILE: " . $ENV{HTTPS_CERT_FILE});
+    }
+    else {
+        RT->Logger->debug("RT *cannot* read HTTPS_CERT_FILE: " . $ENV{HTTPS_CERT_FILE});
+    }
+
     $ENV{HTTPS_KEY_FILE} = $self->KeyFilePath;
+
+    if ( -r $ENV{HTTPS_KEY_FILE} ) {
+        RT->Logger->debug("RT can read HTTPS_KEY_FILE: " . $ENV{HTTPS_KEY_FILE});
+    }
+    else {
+        RT->Logger->debug("RT *cannot* read HTTPS_KEY_FILE: " . $ENV{HTTPS_KEY_FILE});
+    }
+
     my $store_code = sprintf( "%010d", $self->ServiceAccountNo);
 
     $self->UserAgent( LWP::UserAgent->new(ssl_opts => { verify_hostname => 0 }) ) unless $self->UserAgent;
@@ -35,7 +52,7 @@ sub new {
     # by default use the testing (-uat) URLs for both the API and getting the initial token
     $self->{AppleGSXApiBase}  ||= 'https://partner-connect-uat.apple.com/gsx/api';
     $self->{AppleGSXGetToken} ||= 'https://gsx2-uat.apple.com/gsx/api/login';
-
+    debug_ua($self->UserAgent);
     return $self;
 }
 
