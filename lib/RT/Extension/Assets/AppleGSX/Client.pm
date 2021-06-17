@@ -8,7 +8,7 @@ use LWP::UserAgent;
 
 use JSON;
 use Data::Dumper;
-use LWP::ConsoleLogger::Easy qw( debug_ua );
+# use LWP::ConsoleLogger::Easy qw( debug_ua );
 
 use base 'Class::Accessor::Fast';
 __PACKAGE__->mk_accessors(
@@ -52,7 +52,7 @@ sub new {
     # by default use the testing (-uat) URLs for both the API and getting the initial token
     $self->{AppleGSXApiBase}  ||= 'https://partner-connect-uat.apple.com/gsx/api';
     $self->{AppleGSXGetToken} ||= 'https://gsx2-uat.apple.com/gsx/api/login';
-    debug_ua($self->UserAgent);
+    # debug_ua($self->UserAgent);
     return $self;
 }
 
