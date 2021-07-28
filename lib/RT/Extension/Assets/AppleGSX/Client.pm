@@ -49,9 +49,9 @@ sub new {
     );
     $self->UserAgent->default_headers( $default_headers );
 
-    # by default use the testing (-uat) URLs for both the API and getting the initial token
-    $self->{AppleGSXApiBase}  ||= 'https://partner-connect-uat.apple.com/gsx/api';
-    $self->{AppleGSXGetToken} ||= 'https://gsx2-uat.apple.com/gsx/api/login';
+    # by default use the testing (-uat) URL
+    $self->{AppleGSXApiBase} = RT->Config->Get('AppleGSXApiBase') || 'https://partner-connect-uat.apple.com/gsx/api';
+
     # debug_ua($self->UserAgent);
     return $self;
 }
@@ -61,6 +61,7 @@ sub Authenticate {
     my $self = shift;
 
     my %headers = ( Accept => 'text/plain' );
+    RT->Logger->debug("Using AppleGSXApiBase: " . $self->AppleGSXApiBase);
     RT->Logger->debug("Calling GSX /authenticate/check with headers: " . $self->UserAgent->default_headers->as_string . " and " . Dumper(\%headers));
     my $res = $self->UserAgent->get( $self->AppleGSXApiBase . "/authenticate/check", %headers );
     if ( $res->is_success ) {
