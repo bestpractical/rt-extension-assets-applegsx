@@ -1,5 +1,9 @@
 Revision history for RT-Extension-Assets-AppleGSX
 
+2.02 2021-07-28
+
+ - Make sure to apply config values and add debug logging to verify.
+
 2.01 2021-06-04
 
  - Add required X-Apple-Service-Version header to calls for version 2 API.
