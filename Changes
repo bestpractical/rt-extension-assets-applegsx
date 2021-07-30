@@ -1,5 +1,9 @@
 Revision history for RT-Extension-Assets-AppleGSX
 
+2.03 2021-07-30
+
+ - Add debug logs to auth phase
+
 2.02 2021-07-28
 
  - Make sure to apply config values and add debug logging to verify.
