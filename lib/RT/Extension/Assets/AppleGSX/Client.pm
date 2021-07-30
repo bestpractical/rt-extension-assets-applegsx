@@ -114,14 +114,16 @@ sub GetDataForSerial {
     if( ! $token || $response->code == 401 ) {
         my( $ret, $msg, $new_token );
         if( $token ) {
+            RT->Logger->debug('Getting new authentication token');
             ( $ret, $msg, $new_token )= $self->get_new_authentication_token( $token );
         }
         if( ! $token || ! $ret) {
+            RT->Logger->debug('Requesting new authentication token using activation token');
             ( $ret, $msg, $new_token)= $self->get_new_authentication_token( $self->ActivationToken );
         }
 
         if( $ret) {
-            RT->Logger->debug( "got new authentication token");
+            RT->Logger->debug( "Got new authentication token");
             $headers{'X-Apple-Auth-Token'} = $new_token;
             $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/repair/product/details", Content => $json, %headers);
         }
@@ -158,6 +160,9 @@ sub get_new_authentication_token {
         'Content-Type' => 'application/json',
         Accept => 'application/json',
     );
+
+    RT->Logger->debug("Getting authentication token with AppleGSXApiBase: " . $self->AppleGSXApiBase .
+        " and content $json");
     my $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/authenticate/token", Content => $json, %headers );
     if( $response->code == 200 ) {
         my $json_string = $response->decoded_content;
@@ -177,7 +182,7 @@ sub get_new_authentication_token {
         return ( 1, '', $new_authentication_token);
     }
     else {
-        RT->Logger->error( "Failed to get authentication token" );
+        RT->Logger->error( "Failed to get authentication token " . $response->code . ' ' . $response->decoded_content );
         return( 0, "cannot get authentication token: " . $response->code, undef);
     }
 }
