@@ -50,7 +50,7 @@ sub new {
     $self->UserAgent->default_headers( $default_headers );
 
     # by default use the testing (-uat) URL
-    $self->{AppleGSXApiBase} = RT->Config->Get('AppleGSXApiBase') || 'https://partner-connect-uat.apple.com/gsx/api';
+    $self->{AppleGSXApiBase} = RT->Config->Get('AppleGSXApiBase') || 'https://partner-connect-uat.apple.com';
 
     # debug_ua($self->UserAgent);
     return $self;
@@ -62,8 +62,8 @@ sub Authenticate {
 
     my %headers = ( Accept => 'text/plain' );
     RT->Logger->debug("Using AppleGSXApiBase: " . $self->AppleGSXApiBase);
-    RT->Logger->debug("Calling GSX /authenticate/check with headers: " . $self->UserAgent->default_headers->as_string . " and " . Dumper(\%headers));
-    my $res = $self->UserAgent->get( $self->AppleGSXApiBase . "/authenticate/check", %headers );
+    RT->Logger->debug("Calling GSX api/authenticate/check with headers: " . $self->UserAgent->default_headers->as_string . " and " . Dumper(\%headers));
+    my $res = $self->UserAgent->get( $self->AppleGSXApiBase . "/api/authenticate/check", %headers );
     if ( $res->is_success ) {
         return 1;
     }
@@ -108,7 +108,7 @@ sub GetDataForSerial {
 
     # only try if we have a token, otherwise we need to get one first
     if( $token) {
-        $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/repair/product/details", Content => $json, %headers );
+        $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/gsx/api/repair/product/details", Content => $json, %headers );
     }
 
     if( ! $token || $response->code == 401 ) {
@@ -125,7 +125,7 @@ sub GetDataForSerial {
         if( $ret) {
             RT->Logger->debug( "Got new authentication token");
             $headers{'X-Apple-Auth-Token'} = $new_token;
-            $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/repair/product/details", Content => $json, %headers);
+            $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/gsx/api/repair/product/details", Content => $json, %headers);
         }
         else {
             return ( 0, "error connecting to the GSX API: $msg", undef);
@@ -163,7 +163,7 @@ sub get_new_authentication_token {
 
     RT->Logger->debug("Getting authentication token with AppleGSXApiBase: " . $self->AppleGSXApiBase .
         " and content $json");
-    my $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/authenticate/token", Content => $json, %headers );
+    my $response = $self->UserAgent->post( $self->AppleGSXApiBase . "/api/authenticate/token", Content => $json, %headers );
     if( $response->code == 200 ) {
         my $json_string = $response->decoded_content;
         my $response_json = decode_json( $json_string);

@@ -192,13 +192,13 @@ and your server IP addresses must be whitelisted by Apple.
 The configuration for the service uses the following variables:
 
     # test server
-    Set( $AppleGSXApiBase,  'https://partner-connect-uat.apple.com/gsx/api');
+    Set( $AppleGSXApiBase,  'https://partner-connect-uat.apple.com');
     Set( $AppleGSXGetToken, 'https://gsx2-uat.apple.com/gsx/api/login');
 
 or
 
     # production server
-    Set( $AppleGSXApiBase,  'https://partner-connect.apple.com/gsx/api');
+    Set( $AppleGSXApiBase,  'https://partner-connect.apple.com');
     Set( $AppleGSXGetToken, 'https://gsx2.apple.com/gsx/api/login');
 
 Once you have done this, you can configure the authentication information
