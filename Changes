@@ -1,5 +1,11 @@
 Revision history for RT-Extension-Assets-AppleGSX
 
+2.04 2021-08-06
+
+ - Update auth calls to use /api, other calls to use /api/gsx. Note
+   this also updates the suggested setting for $AppleGSXApiBase to set
+   just the base URL.
+
 2.03 2021-07-30
 
  - Add debug logs to auth phase
